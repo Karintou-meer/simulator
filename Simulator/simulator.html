@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ODEシミュレータ</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>     <!--ライブラリを読み込み-->
+</head>
+<body>
+<h2>数値解法の比較</h2>
+<canvas id="graph" height="450" width="600"></canvas>   <!--グラフを描く場所を指定-->
+
+<script>
+
+//初期条件と関数の定義
+    const h = 0.1;          // 0.1ずつ増やしていく
+    const x0 = 0;           // xの初期値
+    const y0 = 1;           // yの初期値 
+    const xend = 2;         // xがどこまで来たら計算を終えるか
+    const f = (x, y) => y;  // dy/dx = y
+
+
+    // 解析的な解(正解)
+    function Analyticalsolution(x0, xend, h){
+        let xn = [];                        // xの値を入れるリスト
+        let yn = [];                        // 解析解の値を入れるリスト
+        for(let x = x0; x <= xend; x += h){    // xがxend(2)になるまでhを足していく
+            xn.push(x);                     // xnリストの一番後ろにxを追加していく
+            yn.push(Math.exp(x));           // ynリストの一番後ろにyを追加していく
+        }                                   // ath.exp(x) = eのx乗を計算するコード
+        return{xn, yn};
+    }
+
+
+    // オイラー法
+    function Euler(x0, y0,xend, h){
+        let xn = [];
+        let yn = [];
+        for(let x = x0, y = y0; x <= xend; x += h){  // for文はfor(初期化; 条件; 更新処理)のため、
+            xn.push(x);                           // x, yの初期化は , でつながないとエラーになる
+            yn.push(y);
+            y += h * f(x, y);               // yn+1 = yn + h * f(xn, yn)を計算するコード
+        }                                   // ynに追加していく形のため計算式自体はh * f(xn, yn)だけで良い
+        return{xn, yn};
+    }
+
+
+    // ルンゲクッタ法
+    function Rungekutta(x0, y0,xend, h){
+        let xn = [];
+        let yn = [];
+        for(let x = x0, y = y0; x <= xend; x += h){
+            xn.push(x);
+            yn.push(y);
+
+            let k1 = h * f(x, y);                   // 現在の傾き
+            let k2 = h * f(x + h / 2, y + k1 / 2);  // 中間点の傾き
+            let k3 = h * f(x + h / 2, y + k2 / 2);  // 中間点の傾き
+            let k4 = h * f(x + h,     y + k3);      // 次の傾き
+
+            y += (1 / 6) * (k1 + 2 * k2 + 2 * k3 + k4); // オイラー法と同様の考え方ができる
+        }                                // ↑ yn+1 = yn + (1/6) * (k1 + 2k2 + 2k3 + k4)を計算するコード
+        return{xn, yn};
+    }
+
+
+    // 誤差計算
+    function calcError(analyticalY, methodY) {
+      let error = [];
+      for (let i = 0; i < analyticalY.length; i++) {
+        error.push(Math.abs(analyticalY[i] - methodY[i]));  // Math.abs()は絶対値の計算をするコード
+      }
+      return error;
+    }
+
+
+    const analytical = Analyticalsolution(x0, xend, h); // 解析解を呼び出す
+    const euler = Euler(x0, y0, xend, h);            // オイラー法を呼び出す
+    const runge = Rungekutta(x0, y0, xend, h);       // ランゲクッタ法を呼び出す
+    const eulerError = calcError(analytical.yn, euler.yn);  // 解析解とオイラー法の差
+    const rungeError = calcError(analytical.yn, runge.yn);  // 解析解とルンゲクッタ法の差
+
+
+    const ctx = document.getElementById('graph').getContext('2d');  // 最初に指定したグラフを描く場所を呼び出している
+    new Chart(ctx, {
+      type: 'line',     // グラフの種類を指定 : 折れ線グラフ
+      data: {
+        labels: analytical.xn,      // x軸に表示する値　解析解より
+        datasets: [                 // 複数の線をまとめるのに必要
+          { label: '解析解', data: analytical.yn, borderColor: 'black', fill: false },  // fill: false : 線の下の塗りつぶしをなくす
+          { label: 'オイラー法', data: euler.yn, borderColor: 'blue', fill: false},
+          { label: 'ルンゲクッタ法', data: runge.yn, borderColor: 'red', fill: false},
+          { label: 'オイラー誤差', data: eulerError, borderColor: 'orange',borderDash: [5, 5],  // 点線
+            fill: false, hidden: true },        // hidden: true : 初期非表示（ラベルクリックで表示できる)
+          { label: 'ルンゲクッタ誤差', data: rungeError, borderColor: 'green', borderDash: [5, 5],
+            fill: false, hidden: true }
+        ]
+      }
+    });
+
+
+</script>
+
+
+</body>
+</html>
